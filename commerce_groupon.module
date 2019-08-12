@@ -62,7 +62,9 @@ function commerce_groupon_cron() {
   $orders = commerce_groupon_get_orders();
   commerce_groupon_create_order($orders);
   $purchased_orders = commerce_groupon_get_purchased_orders();
-  commerce_groupon_process_purchased_orders($purchased_orders);
+  if (!is_null($purchased_orders)) {
+    commerce_groupon_process_purchased_orders($purchased_orders);
+  }
 }
 
 /**
@@ -182,7 +184,13 @@ function commerce_groupon_get_purchased_orders() {
   // TODO end debug - delete it after!
 
   $data = (object)commerce_groupon_request('get', ENDPOINT . '/purchase_orders');
-  return $data->success == TRUE ? $data->po_details : [];
+  if (isset($data->po_details)) {
+    $data_key = 'po_details';
+  }
+  if (isset($data->data)) {
+    $data_key = 'data';
+  }
+  return $data->success == TRUE ? $data->{$data_key} : [];
 }
 
 /**
@@ -195,6 +203,9 @@ function commerce_groupon_get_purchased_orders() {
  * @throws \Drupal\Core\Entity\EntityStorageException
  */
 function commerce_groupon_create_order(array $groupon_orders) {
+  if (empty($groupon_orders)) {
+    return;
+  }
   $exported_line_items = [];
 
   /** @var \Drupal\commerce_store\Entity\StoreInterface $current_store */
@@ -441,6 +452,9 @@ function commerce_groupon_request_get($url) {
  * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
  */
 function commerce_groupon_process_purchased_orders(array $purchased_orders) {
+  if (empty($purchased_orders)) {
+    return;
+  }
   foreach ($purchased_orders as $purchased_order) {
     /** @var \Drupal\commerce_order\Entity\OrderInterface $order */
     $order = \Drupal::entityTypeManager()
