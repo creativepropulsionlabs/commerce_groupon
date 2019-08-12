@@ -1,0 +1,4 @@
+administer commerce_groupon configuration:
+  title: 'Administer commerce_groupon configuration'
+  description: 'Administer commerce groupon configuration.'
+  restrict access: true

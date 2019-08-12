@@ -1,0 +1,7 @@
+commerce_groupon.settings_form:
+  path: '/admin/commerce/config/groupon'
+  defaults:
+    _title: 'Commerce groupon'
+    _form: 'Drupal\commerce_groupon\Form\SettingsForm'
+  requirements:
+    _permission: 'administer commerce_groupon configuration'

@@ -1,0 +1,7 @@
+name: Commerce groupon
+type: module
+description: integrate groupon merchant into commerce
+package: Commerce
+core: 8.x
+dependencies:
+  - commerce_shipping
