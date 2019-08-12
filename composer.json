@@ -1,0 +1,8 @@
+{
+    "name": "drupal/commerce_groupon",
+    "description": "Commerce Groupon integration.",
+    "type": "drupal-module",
+    "homepage": "https://drupal.org/project/commerce_groupon",
+    "license": "GPL-2.0-or-later",
+    "minimum-stability": "dev"
+}
