@@ -489,11 +489,14 @@ function commerce_groupon_process_purchased_orders(array $purchased_orders) {
  * Implements hook_ENTITY_TYPR_presave().
  */
 function commerce_groupon_commerce_shipment_presave(Shipment $shipment) {
+  /** @var \Drupal\commerce_order\Entity\OrderInterface $order */
+  $order = $shipment->getOrder();
+  if (!$order->hasField('groupon_order') || !$order->get('groupon_order')->value) {
+    return;
+  }
   // Send tracking notification.
   // TODO TRUE || for debug!! Delete it
   if (!empty($shipment->getTrackingCode())) {
-    /** @var \Drupal\commerce_order\Entity\OrderInterface $order */
-    $order = $shipment->getOrder();
     $line_items = [];
     /** @var \Drupal\commerce_order\Entity\OrderItemInterface $item */
     foreach ($order->getItems() as $item) {

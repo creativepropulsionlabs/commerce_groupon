@@ -1,0 +1,21 @@
+Groupon orders and Groupon purchase orders are creating by cron.
+After module install you should get supplier ID and token from groupon
+and configure it /admin/commerce/config/groupon also you should select
+order type which will be used as groupon order.
+
+System Cron should be configured to 30 min cron run period or less.
+
+Groupon orders you can find in the standard list of commerce orders  using
+"Groupon order" field for filtering.
+
+Api link is https://scm.commerceinterface.com/api-doc/v4/
+
+Flow.
+1. Module periodically calls /get_orders and create local order.
+2. For each imported line item (order item in terms of drupal commerce) /mark_exported would be  called
+3. When an order is created on the drupal side manager should process the standard delivery process.
+4. When manager updates info about tracking code in order shipping information (shipments entity on the drupal side)
+module notifies Groupon about tracking code change  using /tracking_notification
+5. If the order was purchased on Groupon side purchased order has been created and module fetches this info
+from /purchase_orders endpoint by cron automatically for each order.
+For each order endpoint /purchase_orders/acknowledgement automatically calls by cron.

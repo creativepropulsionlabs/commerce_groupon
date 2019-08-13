@@ -6,6 +6,9 @@ use Drupal\commerce_order\Entity\Order;
 use Drupal\commerce_order\Entity\OrderType;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\entity\BundleFieldDefinition;
+use Drupal\field\Entity\FieldConfig;
+use Drupal\field\Entity\FieldStorageConfig;
 
 /**
  * Configure Commerce groupon settings for this site.
@@ -33,13 +36,13 @@ class SettingsForm extends ConfigFormBase {
     $form['supplier_id'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Supplier id'),
-      '#default_value' => $this->config('commerce_groupon.settings')->get('supplier_id'),
+      '#default_value' => $this->config('commerce_groupon.settings')->get('supplier_id', '33697'),
       '#required' => TRUE,
     ];
     $form['token'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Token'),
-      '#default_value' => $this->config('commerce_groupon.settings')->get('token'),
+      '#default_value' => $this->config('commerce_groupon.settings')->get('token', 'u8Ke37rciuBWO7u2z3rS7Ju6kRvg15u'),
       '#required' => TRUE,
     ];
 
@@ -62,11 +65,49 @@ class SettingsForm extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
+    $bundle_id = $form_state->getValue('order_type');
     $this->config('commerce_groupon.settings')
       ->set('supplier_id', $form_state->getValue('supplier_id'))
       ->set('token', $form_state->getValue('token'))
-      ->set('order_type', $form_state->getValue('order_type'))
+      ->set('order_type', $bundle_id)
       ->save();
+
+    $field_name = 'groupon_order';
+
+    if (!FieldStorageConfig::loadByName('commerce_order', $field_name)) {
+      // Create the field.
+      $field = FieldStorageConfig::create(array(
+        'field_name' => $field_name,
+        'type' => 'boolean',
+        'entity_type' => 'commerce_order',
+      ));
+      $field->save();
+    
+      // Create the instance.
+      $instance = FieldConfig::create(array(
+        'field_name' => $field_name,
+        'entity_type' => 'commerce_order',
+        'bundle' => $bundle_id,
+        'label' => t('Groupon Order'),
+        'description' => t('Indicates that order was imported from groupon.'),
+        'required' => TRUE,
+        'settings' => [
+          'on_label' => 1,
+          'off_label' => 0,
+        ],
+      ));
+      $instance->save();
+    }
+
+
+//      $field_definition = BundleFieldDefinition::create('boolean')
+//      ->setName('groupon_order')
+//      ->setLabel('Groupon Order')
+//      ->setDescription(t('Indicates that order was imported from groupon.'))
+//      ->setDefaultValue(FALSE);
+//    $configurable_field_manager = \Drupal::service('commerce.configurable_field_manager');
+//    $configurable_field_manager->createField($field_definition);
+
     parent::submitForm($form, $form_state);
   }
 
