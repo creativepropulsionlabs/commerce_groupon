@@ -309,6 +309,8 @@ function commerce_groupon_create_order(array $groupon_orders) {
     'order_items' => $order_items,
     'placed' => \Drupal::time()->getCurrentTime(), // @todo use service here.
   ]);
+  $order->set('groupon_order', '1');
+
   $order->save();
 
   // Create shipping profile.
