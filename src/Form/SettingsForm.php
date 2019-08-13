@@ -36,13 +36,13 @@ class SettingsForm extends ConfigFormBase {
     $form['supplier_id'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Supplier id'),
-      '#default_value' => $this->config('commerce_groupon.settings')->get('supplier_id', '33697'),
+      '#default_value' => $this->config('commerce_groupon.settings')->get('supplier_id'),
       '#required' => TRUE,
     ];
     $form['token'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Token'),
-      '#default_value' => $this->config('commerce_groupon.settings')->get('token', 'u8Ke37rciuBWO7u2z3rS7Ju6kRvg15u'),
+      '#default_value' => $this->config('commerce_groupon.settings')->get('token'),
       '#required' => TRUE,
     ];
 

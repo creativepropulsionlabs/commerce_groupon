@@ -7,12 +7,15 @@
 
 use Drupal\commerce_order\Adjustment;
 use Drupal\commerce_shipping\ShipmentItem;
+use Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException;
+use Drupal\Component\Plugin\Exception\PluginNotFoundException;
 use Drupal\Component\Serialization\Json;
 use Drupal\commerce_product\Entity\ProductVariation;
 use Drupal\commerce_product\Entity\Product;
 use Drupal\commerce_price\Price;
 use Drupal\commerce_order\Entity\Order;
 use Drupal\commerce_shipping\Entity\Shipment;
+use Drupal\Core\Entity\EntityStorageException;
 use Drupal\physical\Weight;
 use Drupal\physical\WeightUnit;
 use GuzzleHttp\Exception\BadResponseException;
@@ -60,10 +63,19 @@ function commerce_groupon_weight_units($name) {
  */
 function commerce_groupon_cron() {
   $orders = commerce_groupon_get_orders();
-  commerce_groupon_create_order($orders);
+  try {
+    commerce_groupon_create_order($orders);
+  } catch (InvalidPluginDefinitionException $e) {
+  } catch (PluginNotFoundException $e) {
+  } catch (EntityStorageException $e) {
+  }
   $purchased_orders = commerce_groupon_get_purchased_orders();
   if (!is_null($purchased_orders)) {
-    commerce_groupon_process_purchased_orders($purchased_orders);
+    try {
+      commerce_groupon_process_purchased_orders($purchased_orders);
+    } catch (InvalidPluginDefinitionException $e) {
+    } catch (PluginNotFoundException $e) {
+    }
   }
 }
 
@@ -384,7 +396,12 @@ function commerce_groupon_mark_exported($line_items = []) {
 function commerce_groupon_request($method, $url, $data = []) {
   $callback = "commerce_groupon_request_$method";
   if (is_callable($callback)) {
-    return $callback($url, $data);
+    try {
+      return $callback($url, $data);
+    }
+    catch (Exception $exception) {
+      return [];
+    }
   }
 }
 
@@ -494,9 +511,16 @@ function commerce_groupon_commerce_shipment_presave(Shipment $shipment) {
   if (!$order->hasField('groupon_order') || !$order->get('groupon_order')->value) {
     return;
   }
+  $tracking_code = $shipment->getTrackingCode();
+  if (empty($tracking_code)) {
+    // @todo add custom field as source of tracking_code?
+    if ($shipment->hasField('field_tracking_codes')) {
+      $tracking_code = $shipment->get('field_tracking_codes')->value;
+    }
+  }
   // Send tracking notification.
   // TODO TRUE || for debug!! Delete it
-  if (!empty($shipment->getTrackingCode())) {
+  if (!empty($tracking_code)) {
     $line_items = [];
     /** @var \Drupal\commerce_order\Entity\OrderItemInterface $item */
     foreach ($order->getItems() as $item) {
