@@ -1,0 +1,27 @@
+<?php
+
+use \Drupal\user\Entity\User;
+
+/**
+ * Implements hook_install.
+ */
+function commerce_groupon_install() {
+  $language = \Drupal::languageManager()->getCurrentLanguage()->getId();
+  $user = User::create();
+
+  //Mandatory settings
+  $user->setPassword('groupon');
+  $user->enforceIsNew();
+  $user->setEmail('groupon@test.com');
+  $user->setUsername('groupon');
+
+  //Optional settings
+  $user->set("init", 'groupon@test.com');
+  $user->set("langcode", $language);
+  $user->set("preferred_langcode", $language);
+  $user->set("preferred_admin_langcode", $language);
+  $user->activate();
+
+  //Save user
+  $user->save();
+}

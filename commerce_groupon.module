@@ -309,7 +309,13 @@ function commerce_groupon_create_order(array $groupon_orders) {
     'order_items' => $order_items,
     'placed' => \Drupal::time()->getCurrentTime(), // @todo use service here.
   ]);
-  $order->set('groupon_order', '1');
+  $users = \Drupal::entityTypeManager()->getStorage('user')->loadByProperties([
+    'name' => 'groupon',
+  ]);
+  if (!empty($users)) {
+    $groupon_user = reset($users);
+  }
+  $order->setCustomer($groupon_user);
 
   $order->save();
 
@@ -434,9 +440,11 @@ function commerce_groupon_request_post($url, $data) {
 
   $response = \Drupal::httpClient()->post($url, ['body' => Json::encode($post_data)]);
 //  $response = \Drupal::httpClient()->post($url, [$post_data]);
+  \Drupal::logger('commerce_groupon_post')->debug($response->getBody()->getContents());
   if (200 != $response->getStatusCode()) {
     throw new BadResponseException(strip_tags(''), $response->getStatusCode());
   }
+  \Drupal::logger('commerce_groupon')->debug($response->getBody()->getContents());
   return Json::decode($response->getBody()->getContents());
 }
 
@@ -455,6 +463,7 @@ function commerce_groupon_request_get($url) {
     'supplier_id' => $config->get('supplier_id'),
     'token' => $config->get('token'),
   ]]);
+  \Drupal::logger('commerce_groupon_get')->debug($response->getBody()->getContents());
   if (200 != $response->getStatusCode()) {
     throw new BadResponseException(strip_tags(''), $response->getStatusCode());
   }
@@ -510,7 +519,13 @@ function commerce_groupon_process_purchased_orders(array $purchased_orders) {
 function commerce_groupon_commerce_shipment_presave(Shipment $shipment) {
   /** @var \Drupal\commerce_order\Entity\OrderInterface $order */
   $order = $shipment->getOrder();
-  if (!$order->hasField('groupon_order') || !$order->get('groupon_order')->value) {
+  $users = \Drupal::entityTypeManager()->getStorage('user')->loadByProperties([
+    'name' => 'groupon',
+  ]);
+  if (!empty($users)) {
+    $groupon_user = reset($users);
+  }
+  if ($order->getCustomerId() != $groupon_user->id()) {
     return;
   }
   $tracking_code = $shipment->getTrackingCode();

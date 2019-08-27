@@ -51,13 +51,20 @@ class SettingsForm extends ConfigFormBase {
     foreach ($order_types as $order_type) {
       $options[$order_type->id()] = $order_type->label();
     }
+
+    $order_types = array_map(function ($order_type) {
+      return $order_type->label();
+    }, $order_types);
+    $return_type_ids = array_keys($order_types);
+
     $form['order_type'] = [
       '#type' => 'select',
       '#title' => $this->t('Order type'),
-      '#options' => $options,
+      '#options' => $return_type_ids,
       '#default_value' => $this->config('commerce_groupon.settings')->get('order_type'),
       '#required' => TRUE,
     ];
+
     return parent::buildForm($form, $form_state);
   }
 
@@ -71,42 +78,6 @@ class SettingsForm extends ConfigFormBase {
       ->set('token', $form_state->getValue('token'))
       ->set('order_type', $bundle_id)
       ->save();
-
-    $field_name = 'groupon_order';
-
-    if (!FieldStorageConfig::loadByName('commerce_order', $field_name)) {
-      // Create the field.
-      $field = FieldStorageConfig::create(array(
-        'field_name' => $field_name,
-        'type' => 'boolean',
-        'entity_type' => 'commerce_order',
-      ));
-      $field->save();
-    
-      // Create the instance.
-      $instance = FieldConfig::create(array(
-        'field_name' => $field_name,
-        'entity_type' => 'commerce_order',
-        'bundle' => $bundle_id,
-        'label' => t('Groupon Order'),
-        'description' => t('Indicates that order was imported from groupon.'),
-        'required' => TRUE,
-        'settings' => [
-          'on_label' => 1,
-          'off_label' => 0,
-        ],
-      ));
-      $instance->save();
-    }
-
-
-//      $field_definition = BundleFieldDefinition::create('boolean')
-//      ->setName('groupon_order')
-//      ->setLabel('Groupon Order')
-//      ->setDescription(t('Indicates that order was imported from groupon.'))
-//      ->setDefaultValue(FALSE);
-//    $configurable_field_manager = \Drupal::service('commerce.configurable_field_manager');
-//    $configurable_field_manager->createField($field_definition);
 
     parent::submitForm($form, $form_state);
   }
