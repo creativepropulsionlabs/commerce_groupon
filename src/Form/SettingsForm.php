@@ -47,20 +47,14 @@ class SettingsForm extends ConfigFormBase {
     ];
 
     $order_types = \Drupal::entityTypeManager()->getStorage('commerce_order_type')->loadMultiple();
-    $options = [];
-    foreach ($order_types as $order_type) {
-      $options[$order_type->id()] = $order_type->label();
-    }
-
     $order_types = array_map(function ($order_type) {
       return $order_type->label();
     }, $order_types);
-    $return_type_ids = array_keys($order_types);
 
     $form['order_type'] = [
       '#type' => 'select',
       '#title' => $this->t('Order type'),
-      '#options' => $return_type_ids,
+      '#options' => $order_types,
       '#default_value' => $this->config('commerce_groupon.settings')->get('order_type'),
       '#required' => TRUE,
     ];

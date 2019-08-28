@@ -1,0 +1,34 @@
+commerce_groupon_merchant.config:
+  type: config_object
+  label: 'Commerce Groupon merchant config'
+  mapping:
+    supplier_id:
+      type: string
+      label: 'Supplier id'
+    token:
+      type: string
+      label: 'Token'
+    order_type:
+      type: string
+      label: 'Order type'
+    shipping_method_mappings:
+      type: sequence
+      label: 'Shipping method mappings'
+      sequence:
+        type: mapping
+        label: 'Shipping method mapping'
+        mapping:
+          # Image mapping type. Either 'sizes' (using the 'sizes' attribute)
+          # or 'image_style' (using a single image style to map to this
+          # breakpoint).
+          image_mapping_type:
+            type: string
+            label: 'Responsive image mapping type'
+          image_mapping:
+            type: responsive_image.image_mapping_type.[%parent.image_mapping_type]
+          breakpoint_id:
+            type: string
+            label: 'Breakpoint ID'
+          multiplier:
+            type: string
+            label: 'Multiplier'

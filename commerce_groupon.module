@@ -16,8 +16,11 @@ use Drupal\commerce_price\Price;
 use Drupal\commerce_order\Entity\Order;
 use Drupal\commerce_shipping\Entity\Shipment;
 use Drupal\Core\Entity\EntityStorageException;
+use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\physical\Weight;
 use Drupal\physical\WeightUnit;
+use Drupal\profile\Entity\Profile;
 use GuzzleHttp\Exception\BadResponseException;
 
 define('ENDPOINT', 'https://scm.commerceinterface.com/api/v4');
@@ -154,6 +157,8 @@ function commerce_groupon_get_orders() {
 //  return $enc['data'];
 
   $data = (object)commerce_groupon_request('get', ENDPOINT . '/get_orders');
+  \Drupal::logger('commerce_groupon_get_orders')->debug('<pre>@data</pre>', ['@data' => print_r($data,1)]);
+
   return $data->success == TRUE ? $data->data : [];
 }
 
@@ -222,52 +227,25 @@ function commerce_groupon_create_order(array $groupon_orders) {
 
   /** @var \Drupal\commerce_store\Entity\StoreInterface $current_store */
   $current_store = \Drupal::service('commerce_store.current_store')->getStore();
-  $country_code = $current_store->getAddress()->getCountryCode();
   $lang_code = $current_store->language()->getId();
   $currency_code = $current_store->getDefaultCurrencyCode();
   $config = \Drupal::config('commerce_groupon.settings');
   $current_order_type = \Drupal::entityTypeManager()->getStorage('commerce_order_type')->load($config->get('order_type'));
   $checkout_flow = $current_order_type->getThirdPartySettings('commerce_checkout')['checkout_flow'];
-
+  /** @var \Drupal\commerce_groupon\CommerceGrouponShippingMapperManagerInterface $shipping_mapper */
+  $shipping_mapper = \Drupal::service('commerce_groupon_shipping_mapper.manager');
   foreach ($groupon_orders as $groupon_order) {
-
-    // @todo create local order.
-    // Create the billing profile.
-    /** @var \Drupal\profile\Entity\ProfileInterface $billing_profile */
-    $billing_profile = \Drupal\profile\Entity\Profile::create([
-      'type' => 'customer',
-      'address' => [
-        'given_name' => $groupon_order['customer']['name'],
-        'address_line1' => $groupon_order['customer']['address1'],
-        'address_line2' => $groupon_order['customer']['address2'],
-        'postal_code' => $groupon_order['customer']['zip'],
-        'locality' => $groupon_order['customer']['city'],
-        'country_code' => $country_code,
-        'langcode' => $lang_code,
-      ],
-    ]);
-    $billing_profile->save();
-
     // Create product variations.
     $order_items = [];
     $shipping_items = [];
     foreach ($groupon_order['line_items'] as $line_item) {
-      $variation = ProductVariation::create([
-        'type' => 'default',
-        'sku' => $line_item['sku'],
-        'price' => new Price((string)$line_item['unit_price'], $currency_code),
-        'weight' => new Weight(
-          (string)$line_item['weight'],
-          commerce_groupon_weight_units($groupon_order['shipping']['product_weight_unit'])),
-      ]);
-      $variation->save();
+      $variation_storage = \Drupal::entityTypeManager()->getStorage('commerce_product_variation');
+      $variations = $variation_storage->loadByProperties(['groupon_upc' => $line_item["sku"]]);
+      if (empty($variations)) {
+        return;
+      }
 
-      // Create product.
-      $product = Product::create([
-        'type' => 'default',
-        'title' => $line_item['name'],
-        'variations' => [$variation],
-      ])->save();
+      $variation = reset($variations);
 
       // Create order items.
       $order_item = \Drupal\commerce_order\Entity\OrderItem::create([
@@ -278,94 +256,78 @@ function commerce_groupon_create_order(array $groupon_orders) {
         'unit_price' => $variation->getPrice(),
       ]);
       $order_item->setData('ci_lineitemid', (string)$line_item['ci_lineitemid']);
+      $order_item->setData('po_number', (string)$groupon_order['parent_orderid']);
+      $order_item->setData('groupon_raw', Json::encode($line_item));
       $order_item->save();
       $order_items[] = $order_item;
-
-      // Create shipping items.
-      $shipping_item = new ShipmentItem([
-        'order_item_id' => $order_item->id(),
-        'title' => $order_item->label(),
-        'quantity' => $order_item->getQuantity(),
-        'weight' => new Weight(
-          (string)$line_item['weight'],
-          commerce_groupon_weight_units($groupon_order['shipping']['product_weight_unit'])),
-        'declared_value' => $order_item->getUnitPrice(),
-      ]);
+      $shipping_item = $shipping_mapper->getShippingItem($order_item, $line_item, $groupon_order);
       $shipping_items[] = $shipping_item;
     }
-  }
-
-  // Create order.
-  /** @var \Drupal\commerce_order\Entity\Order $order */
-  $order = Order::create([
-    'type' => $current_order_type->id(),
-  // TODO check this fields - 'checkout_flow' 'checkout_step' should be dinamic
-    'checkout_flow' => $checkout_flow,
-    'checkout_step' => 'complete',
-    'state' => 'completed',
-    'order_number' => $groupon_order['orderid'],
-    'billing_profile' => $billing_profile,
-    'store_id' => $current_store->id(),
-    'order_items' => $order_items,
-    'placed' => \Drupal::time()->getCurrentTime(), // @todo use service here.
-  ]);
-  $users = \Drupal::entityTypeManager()->getStorage('user')->loadByProperties([
-    'name' => 'groupon',
-  ]);
-  if (!empty($users)) {
-    $groupon_user = reset($users);
-  }
-  $order->setCustomer($groupon_user);
-
-  $order->save();
-
-  // Create shipping profile.
-  $shipping_profile = $order->getBillingProfile()->createDuplicate();
-  $shipping_profile
-    ->enforceIsNew(TRUE)
-    ->save();
-
-  // Create shipments.
-  $weight_unit = commerce_groupon_weight_units($groupon_order['shipping']['product_weight_unit']);
-  $weight = new Weight((string)$groupon_order['shipping']['product_weight'], $weight_unit);
-  // TODO Check shipping method!
-  $shipping_method = \Drupal::entityTypeManager()
-    ->getStorage('commerce_shipping_method')
-    ->loadByProperties([
-      'name' => mb_strtolower($groupon_order['shipping']['carrier']),
+    // @todo create local order.
+    // Create the billing profile.
+    /** @var \Drupal\profile\Entity\ProfileInterface $billing_profile */
+    $billing_profile = Profile::create([
+      'type' => 'customer',
+      'address' => [
+        'given_name' => $groupon_order['customer']['name'],
+        'family_name' => $groupon_order['customer']['name'],
+        'address_line1' => $groupon_order['customer']['address1'],
+        'address_line2' => $groupon_order['customer']['address2'],
+        'administrative_area' => $groupon_order["customer"]["state"],
+        'postal_code' => $groupon_order['customer']['zip'],
+        'locality' => $groupon_order['customer']['city'],
+        'country_code' => $groupon_order["customer"]["country"],
+        'langcode' => $lang_code,
+      ],
     ]);
+    $billing_profile->save();
+    // Create order.
+    /** @var \Drupal\commerce_order\Entity\Order $order */
+    $order = Order::create([
+      'type' => $current_order_type->id(),
+      // TODO check this fields - 'checkout_flow' 'checkout_step' should be dinamic
+      'checkout_flow' => $checkout_flow,
+      'checkout_step' => 'complete',
+      'state' => 'completed',
+      'order_number' => $groupon_order['orderid'],
+      'billing_profile' => $billing_profile,
+      'store_id' => $current_store->id(),
+      'order_items' => $order_items,
+      'placed' => \Drupal::time()->getCurrentTime(), // @todo use service here.
+    ]);
+    $users = \Drupal::entityTypeManager()->getStorage('user')->loadByProperties([
+      'name' => 'groupon',
+    ]);
+    if (!empty($users)) {
+      $groupon_user = reset($users);
+    }
+    $order->setCustomer($groupon_user);
+    $order->setData('groupon_raw', Json::encode($groupon_order));
+    $order->save();
+    $shipment = $shipping_mapper->getShipment($order, $groupon_order);
+    $shipment->save();
 
-  $shipping_method = reset($shipping_method);
-  /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface $shipments */
-  $shipment = Shipment::create([
-    'type' => 'default',
-    'title' => $groupon_order['supplier'],
-    'order_id' => $order->id(),
-    'shipping_method' => $shipping_method,
-//    'shipping_service' => $groupon_order['shipping']['carrier'],
-    'shipping_service' => $shipping_method->getPlugin()->getServices()['default']->getId(),
-    'shipping_profile' => $shipping_profile,
-    // TODO items ????
-    'items' => $shipping_items,
-    'weight' => $weight,
-    'amount' => new Price((string)$groupon_order['amount']['total'], $currency_code),
-  ]);
-  $shipment->save();
-
-  $order->set('shipments', $shipment);
-  $order->addAdjustment(new Adjustment([
-    'type' => 'shipping',
-    'label' => t('Shipping'),
-    'amount' => $shipment->getAmount(),
-    'source_id' => $shipment->id(),
-  ]));
-  $order->save();
+    $order->set('shipments', $shipment);
+    $order->addAdjustment(new Adjustment([
+      'type' => 'shipping',
+      'label' => t('Shipping'),
+      'amount' => $shipment->getAmount(),
+      'source_id' => $shipment->id(),
+    ]));
+    $order->save();
+  }
 
   foreach ($groupon_order['line_items'] as $line_item) {
     $exported_line_items[] = $line_item['ci_lineitemid'];
   }
 
-  commerce_groupon_mark_exported($exported_line_items);
+  try {
+    commerce_groupon_mark_exported($exported_line_items);
+  } catch (Exception $e) {
+    \Drupal::logger('commerce_groupon')->debug('The following line items are not marked as exported <pre>@data</pre>', [
+      '@data' => print_r($exported_line_items,1)
+    ]);
+  }
 }
 
 /**
@@ -408,7 +370,10 @@ function commerce_groupon_request($method, $url, $data = []) {
       return $callback($url, $data);
     }
     catch (Exception $exception) {
-      return [];
+      $response = JSON::decode((string)$exception->getResponse()->getBody());
+
+      \Drupal::logger('commerce_groupon_post')->debug('<pre>@data</pre>', ['@data' => print_r($response,1)]);
+      return $response;
     }
   }
 }
@@ -444,8 +409,16 @@ function commerce_groupon_request_post($url, $data) {
   if (200 != $response->getStatusCode()) {
     throw new BadResponseException(strip_tags(''), $response->getStatusCode());
   }
-  \Drupal::logger('commerce_groupon')->debug($response->getBody()->getContents());
-  return Json::decode($response->getBody()->getContents());
+  \Drupal::logger('commerce_groupon')->debug((string)$response->getBody());
+  $contents = (string)$response->getBody();
+  $data = Json::decode($contents);
+  \Drupal::logger('commerce_groupon')->debug('<pre>@data</pre>', ['@data' => print_r($data, 1)]);
+
+  if (empty($data)) {
+    $data = new \stdClass();
+    $data->success = FALSE;
+  }
+  return $data;
 }
 
 /**
@@ -458,16 +431,28 @@ function commerce_groupon_request_post($url, $data) {
  *   Result of call
  */
 function commerce_groupon_request_get($url) {
+  \Drupal::logger('commerce_groupon_request_get')->debug('<pre>@data</pre>', ['@data' => print_r($url,1)]);
+
   $config = \Drupal::config('commerce_groupon.settings');
-  $response = \Drupal::httpClient()->get($url, ['query' => [
+  $options = ['query' => [
     'supplier_id' => $config->get('supplier_id'),
     'token' => $config->get('token'),
-  ]]);
-  \Drupal::logger('commerce_groupon_get')->debug($response->getBody()->getContents());
+  ]];
+  \Drupal::logger('commerce_groupon_request_get')->debug('<pre>@data</pre>', ['@data' => print_r($options,1)]);
+
+  $response = \Drupal::httpClient()->get($url, $options);
+  \Drupal::logger('commerce_groupon_get')->debug('<pre>@data</pre>', ['@data' => print_r((string)$response->getBody(),1)]);
+
   if (200 != $response->getStatusCode()) {
     throw new BadResponseException(strip_tags(''), $response->getStatusCode());
   }
-  return Json::decode($response->getBody()->getContents());
+  $contents = (string) $response->getBody();
+  $data = Json::decode($contents);
+  if (empty($data)) {
+    $data = new \stdClass();
+    $data->success = FALSE;
+  }
+  return $data;
 }
 
 /**
@@ -554,5 +539,36 @@ function commerce_groupon_commerce_shipment_presave(Shipment $shipment) {
       'tracking_info' => Json::encode($line_items)
     ];
     $data = commerce_groupon_request('post', ENDPOINT . '/tracking_notification', $post_data);
+  }
+}
+
+function commerce_groupon_entity_base_field_info(EntityTypeInterface $entity_type) {
+  if ($entity_type->id() === 'commerce_shipping_method') {
+    $fields = [];
+    $fields['groupon_shipping'] = BaseFieldDefinition::create('commerce_plugin_item:commerce_groupon_shipping_mapper')
+      ->setLabel(t('Groupon shipping'))
+      ->setCardinality(1)
+      ->setRequired(FALSE)
+      ->setDisplayOptions('form', [
+        'type' => 'commerce_plugin_select',
+        'weight' => 3,
+      ]);
+    return $fields;
+  }
+  if ($entity_type->id() === 'commerce_product_variation') {
+    $fields = [];
+    $fields['groupon_upc'] = BaseFieldDefinition::create('string')
+      ->setLabel(t('Groupon UPC'))
+      ->setDescription(t('The unique Groupon Universal Product Code.'))
+      ->setRequired(FALSE)
+      ->addConstraint('ProductVariationUpc')
+      ->setSetting('display_description', TRUE)
+      ->setDisplayOptions('form', [
+        'type' => 'string_textfield',
+        'weight' => -4,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+    return $fields;
   }
 }

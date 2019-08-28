@@ -8,7 +8,7 @@
 use Drupal\user\Entity\User;
 
 /**
- * Enforce order of role permissions.
+ * Ensure that groupon user is exist.
  */
 function commerce_groupon_post_update_user_create() {
   $users = \Drupal::entityTypeManager()->getStorage('user')->loadByProperties([
@@ -23,11 +23,11 @@ function commerce_groupon_post_update_user_create() {
   //Mandatory settings
   $user->setPassword('groupon');
   $user->enforceIsNew();
-  $user->setEmail('groupon@test.com');
+  $user->setEmail('groupon@example.com');
   $user->setUsername('groupon');
 
   //Optional settings
-  $user->set("init", 'groupon@test.com');
+  $user->set("init", 'groupon@example.com');
   $user->set("langcode", $language);
   $user->set("preferred_langcode", $language);
   $user->set("preferred_admin_langcode", $language);

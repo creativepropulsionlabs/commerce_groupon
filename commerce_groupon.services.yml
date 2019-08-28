@@ -1,0 +1,12 @@
+services:
+  plugin.manager.commerce_groupon_shipping_mapper:
+    class: Drupal\commerce_groupon\CommerceGrouponShippingMapperPluginManager
+    parent: default_plugin_manager
+    arguments: ['@entity_type.manager']
+  commerce_groupon_shipping_mapper.manager:
+    class: Drupal\commerce_groupon\CommerceGrouponShippingMapperManager
+    arguments: ['@entity.manager', '@entity_type.manager', '@plugin.manager.commerce_groupon_shipping_mapper']
+  commerce_groupon.referenceable_plugin_types_subscriber:
+    class: Drupal\commerce_groupon\EventSubscriber\ReferenceablePluginTypesSubscriber
+    tags:
+      - { name: event_subscriber }

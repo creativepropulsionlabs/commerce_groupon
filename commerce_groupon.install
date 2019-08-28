@@ -1,5 +1,6 @@
 <?php
 
+use Drupal\Core\Field\BaseFieldDefinition;
 use \Drupal\user\Entity\User;
 
 /**
@@ -24,4 +25,51 @@ function commerce_groupon_install() {
 
   //Save user
   $user->save();
+  $entity_type = \Drupal::service('entity_type.manager')->getDefinition('commerce_shipping_method');
+  \Drupal::service('entity.definition_update_manager')->updateEntityType($entity_type);
+
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function commerce_groupon_uninstall() {
+  $entity_type = \Drupal::service('entity_type.manager')->getDefinition('commerce_shipping_method');
+  \Drupal::service('entity.definition_update_manager')->updateEntityType($entity_type);
+}
+
+/**
+ * Add Groupon shipping field into commerce_shipping_method.
+ */
+function commerce_groupon_update_8202() {
+  $field_storage_definition = BaseFieldDefinition::create('commerce_plugin_item:commerce_groupon_shipping_mapper')
+    ->setLabel(t('Groupon shipping'))
+    ->setCardinality(1)
+    ->setRequired(FALSE)
+    ->setDisplayOptions('form', [
+      'type' => 'commerce_plugin_select',
+      'weight' => 3,
+    ]);
+  \Drupal::entityDefinitionUpdateManager()
+    ->installFieldStorageDefinition('groupon_shipping', 'commerce_shipping_method', 'commerce_groupon', $field_storage_definition);
+}
+
+/**
+ * Add Groupon UPC field into commerce_product_variation.
+ */
+function commerce_groupon_update_8203() {
+  $field_storage_definition = BaseFieldDefinition::create('string')
+    ->setLabel(t('Groupon UPC'))
+    ->setDescription(t('The unique Groupon Universal Product Code.'))
+    ->setRequired(FALSE)
+    ->addConstraint('ProductVariationUpc')
+    ->setSetting('display_description', TRUE)
+    ->setDisplayOptions('form', [
+      'type' => 'string_textfield',
+      'weight' => -4,
+    ])
+    ->setDisplayConfigurable('form', TRUE)
+    ->setDisplayConfigurable('view', TRUE);
+  \Drupal::entityDefinitionUpdateManager()
+    ->installFieldStorageDefinition('groupon_upc', 'commerce_product_variation', 'commerce_groupon', $field_storage_definition);
 }
