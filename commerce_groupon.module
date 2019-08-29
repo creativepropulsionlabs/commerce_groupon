@@ -240,7 +240,7 @@ function commerce_groupon_create_order(array $groupon_orders) {
     $shipping_items = [];
     foreach ($groupon_order['line_items'] as $line_item) {
       $variation_storage = \Drupal::entityTypeManager()->getStorage('commerce_product_variation');
-      $variations = $variation_storage->loadByProperties(['groupon_upc' => $line_item["sku"]]);
+      $variations = $variation_storage->loadByProperties(['sku' => $line_item["sku"]]);
       if (empty($variations)) {
         return;
       }
