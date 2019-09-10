@@ -13,11 +13,11 @@ function commerce_groupon_install() {
   //Mandatory settings
   $user->setPassword('groupon');
   $user->enforceIsNew();
-  $user->setEmail('groupon@test.com');
+  $user->setEmail('groupon@example.com');
   $user->setUsername('groupon');
 
   //Optional settings
-  $user->set("init", 'groupon@test.com');
+  $user->set("init", 'groupon@example.com');
   $user->set("langcode", $language);
   $user->set("preferred_langcode", $language);
   $user->set("preferred_admin_langcode", $language);

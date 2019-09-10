@@ -12,7 +12,6 @@ interface CommerceGrouponShippingMapperManagerInterface {
   /**
    * @param \Drupal\commerce_order\Entity\OrderInterface $order
    *   Drupal order.
-   *
    * @param array $groupon_order
    *   Groupon order.
    *
@@ -20,6 +19,16 @@ interface CommerceGrouponShippingMapperManagerInterface {
    *   Generated shipment.
    */
   public function getShipment(OrderInterface $order,$groupon_order);
+
+
+  /**
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   Drupal order.
+   *
+   * @return string
+   *   Carrier ID.
+   */
+  public function getCarrier(OrderInterface $order);
 
   /**
    * Get shiping Item.

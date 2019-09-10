@@ -35,6 +35,10 @@ abstract class CommerceGrouponShippingMapperPluginPluginBase extends PluginBase 
     $this->entityTypeManager = $entity_type_manager;
   }
 
+  public function getCarrier(OrderInterface $order) {
+    return 'UPS';
+  }
+
   public function getShipment(OrderInterface $order, $groupon_order) {
 
 

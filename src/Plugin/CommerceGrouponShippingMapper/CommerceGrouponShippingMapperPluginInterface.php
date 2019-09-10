@@ -17,6 +17,7 @@ use Drupal\Core\Plugin\PluginFormInterface;
 interface CommerceGrouponShippingMapperPluginInterface extends  ConfigurablePluginInterface, PluginFormInterface, PluginInspectionInterface, DerivativeInspectionInterface {
   public function getShippingItem(OrderItemInterface $order_item, $groupon_line_item, $groupon_order);
   public function getShipment(OrderInterface $order, $groupon_order);
+  public function getCarrier(OrderInterface $order);
   public function getShippingProfile(OrderInterface $order, $groupon_order);
 
   /**

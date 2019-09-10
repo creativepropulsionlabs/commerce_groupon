@@ -57,7 +57,22 @@ class CommerceGrouponShippingMapperManager implements CommerceGrouponShippingMap
   /**
    * {@inheritdoc}
    */
-  public function getShipment(OrderInterface $order,$groupon_order) {
+  public function getCarrier(OrderInterface $order) {
+    $groupon_order = json_decode($order->getData('groupon_raw'));
+    /** @var \Drupal\commerce_groupon\Plugin\CommerceGrouponShippingMapper\CommerceGrouponShippingMapperPluginInterface $shipping_method_plugin */
+    $shipping_method_plugin = $this->getPlugin($groupon_order->shipping->method);
+    if (!$shipping_method_plugin) {
+      return;
+    }
+    $shipment = $shipping_method_plugin->getCarrier($order);
+
+    return $shipment;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getShipment(OrderInterface $order, $groupon_order) {
     /** @var \Drupal\commerce_groupon\Plugin\CommerceGrouponShippingMapper\CommerceGrouponShippingMapperPluginInterface $shipping_method_plugin */
     $shipping_method_plugin = $this->getPlugin($groupon_order["shipping"]["method"]);
     if (!$shipping_method_plugin) {
