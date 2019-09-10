@@ -48,4 +48,12 @@ class CommerceGrouponShippingMapper extends Plugin {
    */
   public $drupal_shipping_method_plugin;
 
+
+  /**
+   * Mapper plugin weight.
+   *
+   * @var int
+   */
+  public $weight;
+
 }

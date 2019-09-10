@@ -4,6 +4,7 @@ namespace Drupal\commerce_groupon;
 
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_order\Entity\OrderItemInterface;
+use Drupal\Component\Utility\SortArray;
 use Drupal\Core\Entity\EntityManagerInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
@@ -46,6 +47,7 @@ class CommerceGrouponShippingMapperManager implements CommerceGrouponShippingMap
 
   protected function getPlugin($groupon_shipping_method) {
     $plugins = $this->pluginManager->getDefinitions();
+    uasort($plugins, 'Drupal\Component\Utility\SortArray::sortByWeightElement');
     foreach ($plugins as $plugin_id => $plugin) {
       if ($plugin['groupon_shipping_method'] == $groupon_shipping_method) {
         return $this->pluginManager->createInstance($plugin_id);
