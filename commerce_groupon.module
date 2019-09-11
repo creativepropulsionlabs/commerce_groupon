@@ -320,6 +320,10 @@ function commerce_groupon_create_order(array $groupon_orders) {
     $order->save();
     $shipment = $shipping_mapper->getShipment($order, $groupon_order);
     $shipment->save();
+    // Duplicate billing to shipping.
+    if ($order->hasField('shipping_profile')) {
+      $order->set('shipping_profile', $billing_profile);
+    }
 
     $order->set('shipments', $shipment);
     $order->addAdjustment(new Adjustment([
@@ -462,9 +466,9 @@ function commerce_groupon_request_get($url) {
     'supplier_id' => $config->get('supplier_id'),
     'token' => $config->get('token'),
   ]];
-  if ($url == 'https://scm.commerceinterface.com/api/v4/get_orders') {
-    $options['query']['start_datetime'] = '09/06/2019 00:00';
-    $options['query']['end_datetime'] = '09/06/2019 23:59';
+  if ($config->get('debug', 0) && $url == 'https://scm.commerceinterface.com/api/v4/get_orders') {
+    $options['query']['start_datetime'] = $config->get('start_datetime', '09/06/2019 00:00');
+    $options['query']['end_datetime'] = $config->get('end_datetime', '09/06/2019 23:59');
   }
 
   \Drupal::logger('commerce_groupon_request_get')->debug('<pre>@data</pre>', ['@data' => print_r($options,1)]);

@@ -58,6 +58,26 @@ class SettingsForm extends ConfigFormBase {
       '#default_value' => $this->config('commerce_groupon.settings')->get('order_type'),
       '#required' => TRUE,
     ];
+    $form['debug'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Debug'),
+      '#default_value' => $this->config('commerce_groupon.settings')->get('debug'),
+    ];
+
+    $form['start_datetime'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Start datetime'),
+      '#description' => $this->t('(DEBUG USE ONLY, Period should be less then 1 day long) Timestamp should be in MM/DD/YYYY HH:MM format (UTC)'),
+      '#default_value' => $this->config('commerce_groupon.settings')->get('start_datetime'),
+      '#required' => TRUE,
+    ];
+    $form['end_datetime'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('End datetime'),
+      '#description' => $this->t('(DEBUG USE ONLY, Period should be less then 1 day long) Timestamp should be in MM/DD/YYYY HH:MM format (UTC)'),
+      '#default_value' => $this->config('commerce_groupon.settings')->get('end_datetime'),
+      '#required' => TRUE,
+    ];
 
     return parent::buildForm($form, $form_state);
   }
@@ -70,6 +90,9 @@ class SettingsForm extends ConfigFormBase {
     $this->config('commerce_groupon.settings')
       ->set('supplier_id', $form_state->getValue('supplier_id'))
       ->set('token', $form_state->getValue('token'))
+      ->set('debug', $form_state->getValue('debug'))
+      ->set('start_datetime', $form_state->getValue('start_datetime'))
+      ->set('end_datetime', $form_state->getValue('end_datetime'))
       ->set('order_type', $bundle_id)
       ->save();
 
