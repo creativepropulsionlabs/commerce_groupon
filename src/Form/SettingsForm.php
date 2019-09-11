@@ -69,14 +69,12 @@ class SettingsForm extends ConfigFormBase {
       '#title' => $this->t('Start datetime'),
       '#description' => $this->t('(DEBUG USE ONLY, Period should be less then 1 day long) Timestamp should be in MM/DD/YYYY HH:MM format (UTC)'),
       '#default_value' => $this->config('commerce_groupon.settings')->get('start_datetime'),
-      '#required' => TRUE,
     ];
     $form['end_datetime'] = [
       '#type' => 'textfield',
       '#title' => $this->t('End datetime'),
       '#description' => $this->t('(DEBUG USE ONLY, Period should be less then 1 day long) Timestamp should be in MM/DD/YYYY HH:MM format (UTC)'),
       '#default_value' => $this->config('commerce_groupon.settings')->get('end_datetime'),
-      '#required' => TRUE,
     ];
 
     return parent::buildForm($form, $form_state);

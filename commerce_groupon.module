@@ -273,7 +273,7 @@ function commerce_groupon_create_order(array $groupon_orders) {
       $shipping_items[] = $shipping_item;
     }
 
-    if ($bypass_order_creation) {
+    if (!empty($bypass_order_creation)) {
       continue;
     }
 
@@ -307,7 +307,6 @@ function commerce_groupon_create_order(array $groupon_orders) {
       'billing_profile' => $billing_profile,
       'store_id' => $current_store->id(),
       'order_items' => $order_items,
-      'placed' => \Drupal::time()->getCurrentTime(), // @todo use service here.
     ]);
     $users = \Drupal::entityTypeManager()->getStorage('user')->loadByProperties([
       'name' => 'groupon',
@@ -320,11 +319,6 @@ function commerce_groupon_create_order(array $groupon_orders) {
     $order->save();
     $shipment = $shipping_mapper->getShipment($order, $groupon_order);
     $shipment->save();
-    // Duplicate billing to shipping.
-    if ($order->hasField('shipping_profile')) {
-      $order->set('shipping_profile', $billing_profile);
-    }
-
     $order->set('shipments', $shipment);
     $order->addAdjustment(new Adjustment([
       'type' => 'shipping',
