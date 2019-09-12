@@ -53,12 +53,6 @@ class Groupon extends ShippingMethodBase {
   public function buildConfigurationForm(array $form, FormStateInterface $form_state) {
     $form = parent::buildConfigurationForm($form, $form_state);
 
-    $amount = $this->configuration['rate_amount'];
-    // A bug in the plugin_select form element causes $amount to be incomplete.
-    if (isset($amount) && !isset($amount['number'], $amount['currency_code'])) {
-      $amount = NULL;
-    }
-
     $form['method'] = [
       '#type' => 'textfield',
       '#title' => t('Groupon Method label'),
