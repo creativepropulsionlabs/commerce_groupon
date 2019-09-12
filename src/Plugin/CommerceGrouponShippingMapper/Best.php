@@ -15,10 +15,17 @@ use Drupal\commerce_shipping\Entity\Shipment;
  *   label = @Translation("Best"),
  *   groupon_shipping_method = "BEST",
  *   drupal_shipping_method_plugin = "flat_rate",
- *   weight = 1000
+ *   weight = 1
  * )
  */
 
 class Best extends CommerceGrouponShippingMapperPluginPluginBase {
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getCarrier(OrderInterface $order) {
+    return 'UPS';
+  }
 
 }
