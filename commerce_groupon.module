@@ -611,4 +611,19 @@ function commerce_groupon_entity_base_field_info(EntityTypeInterface $entity_typ
       ->setDisplayConfigurable('view', TRUE);
     return $fields;
   }
+  if ($entity_type->id() === 'commerce_order') {
+    $fields = [];
+    $fields['groupon_order_id'] = BaseFieldDefinition::create('string')
+      ->setLabel(t('Groupon Order ID'))
+      ->setDescription(t('The unique Groupon Order ID.'))
+      ->setRequired(FALSE)
+      ->setSetting('display_description', TRUE)
+      ->setDisplayOptions('form', [
+        'type' => 'string_textfield',
+        'weight' => -4,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+    return $fields;
+  }
 }
