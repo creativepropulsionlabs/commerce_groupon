@@ -73,3 +73,22 @@ function commerce_groupon_update_8203() {
   \Drupal::entityDefinitionUpdateManager()
     ->installFieldStorageDefinition('groupon_upc', 'commerce_product_variation', 'commerce_groupon', $field_storage_definition);
 }
+
+/**
+ * Add Groupon order ID field into commerce_product_variation.
+ */
+function commerce_groupon_update_8204() {
+  $field_storage_definition = BaseFieldDefinition::create('string')
+    ->setLabel(t('Groupon Order ID'))
+    ->setDescription(t('The unique Groupon Order ID.'))
+    ->setRequired(FALSE)
+    ->setSetting('display_description', TRUE)
+    ->setDisplayOptions('form', [
+      'type' => 'string_textfield',
+      'weight' => -4,
+    ])
+    ->setDisplayConfigurable('form', TRUE)
+    ->setDisplayConfigurable('view', TRUE);
+  \Drupal::entityDefinitionUpdateManager()
+    ->installFieldStorageDefinition('groupon_order_id', 'commerce_order', 'commerce_groupon', $field_storage_definition);
+}

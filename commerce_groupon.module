@@ -234,7 +234,7 @@ function commerce_groupon_create_order(array $groupon_orders) {
   $shipping_mapper = \Drupal::service('commerce_groupon_shipping_mapper.manager');
   $order_storage = \Drupal::entityTypeManager()->getStorage('commerce_order');
   foreach ($groupon_orders as $groupon_order) {
-    $orders = $order_storage->loadByProperties(['order_number' => $groupon_order['orderid']]);
+    $orders = $order_storage->loadByProperties(['groupon_order_id' => $groupon_order['orderid']]);
     if (!empty($orders)) {
       // Skip order which was previously created.
       continue;
@@ -295,7 +295,7 @@ function commerce_groupon_create_order(array $groupon_orders) {
       ],
     ]);
     if ($billing_profile->hasField('field_phone_number')) {
-      $phone = $groupon_order['customer']['phone'] ? $groupon_order['customer']['phone'] :'555-555-5555';
+      $phone = !empty($groupon_order['customer']['phone']) ? $groupon_order['customer']['phone'] :'202-555-5555';
       $billing_profile->set('field_phone_number', $phone);
     }
     $billing_profile->save();
@@ -307,7 +307,7 @@ function commerce_groupon_create_order(array $groupon_orders) {
       'checkout_flow' => $checkout_flow,
       'checkout_step' => 'complete',
       'state' => 'draft',
-      'order_number' => $groupon_order['orderid'],
+      'groupon_order_id' => $groupon_order['orderid'],
       'billing_profile' => $billing_profile,
       'store_id' => $current_store->id(),
       'order_items' => $order_items,
@@ -504,7 +504,7 @@ function commerce_groupon_process_purchased_orders(array $purchased_orders) {
     $order = \Drupal::entityTypeManager()
       ->getStorage('commerce_order')
       ->loadByProperties([
-        'order_number' => $purchased_order['po_number']
+        'groupon_order_id' => $purchased_order['po_number']
       ]);
     $order = array_pop($order);
 
@@ -537,7 +537,7 @@ function commerce_groupon_commerce_shipment_presave(Shipment $shipment) {
   /** @var \Drupal\commerce_order\Entity\OrderInterface $order */
   $order = $shipment->getOrder();
   $users = \Drupal::entityTypeManager()->getStorage('user')->loadByProperties([
-    'name' => 'groupon',
+    'mail' => 'groupon@example.com',
   ]);
   if (!empty($users)) {
     $groupon_user = reset($users);
