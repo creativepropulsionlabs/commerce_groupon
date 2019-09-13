@@ -288,12 +288,16 @@ function commerce_groupon_create_order(array $groupon_orders) {
         'address_line1' => $groupon_order['customer']['address1'],
         'address_line2' => $groupon_order['customer']['address2'],
         'administrative_area' => $groupon_order["customer"]["state"],
-        'postal_code' => $groupon_order['customer']['zip'],
+        'postal_code' => mb_substr($groupon_order['customer']['zip'], 0, 5),
         'locality' => $groupon_order['customer']['city'],
         'country_code' => $groupon_order["customer"]["country"],
         'langcode' => $lang_code,
       ],
     ]);
+    if ($billing_profile->hasField('field_phone_number')) {
+      $phone = $groupon_order['customer']['phone'] ? $groupon_order['customer']['phone'] :'555-555-5555';
+      $billing_profile->set('field_phone_number', $phone);
+    }
     $billing_profile->save();
     // Create order.
     /** @var \Drupal\commerce_order\Entity\Order $order */

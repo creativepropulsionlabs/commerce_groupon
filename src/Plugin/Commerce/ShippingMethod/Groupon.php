@@ -2,6 +2,7 @@
 
 namespace Drupal\commerce_groupon\Plugin\Commerce\ShippingMethod;
 
+use Drupal\commerce_price\Price;
 use Drupal\commerce_shipping\Entity\ShipmentInterface;
 use Drupal\commerce_shipping\PackageTypeManagerInterface;
 use Drupal\commerce_shipping\Plugin\Commerce\ShippingMethod\ShippingMethodBase;
@@ -84,6 +85,9 @@ class Groupon extends ShippingMethodBase {
     // single rate per plugin, and there's no support for purchasing rates.
     $rate_id = 0;
     $amount = $shipment->getAmount();
+    if (is_null($amount)) {
+      $amount = new Price('0', $shipment->getOrder()->getTotalPrice()->getCurrencyCode());
+    }
     $rates = [];
     $rates[] = new ShippingRate($rate_id, $this->services['default'], $amount);
 

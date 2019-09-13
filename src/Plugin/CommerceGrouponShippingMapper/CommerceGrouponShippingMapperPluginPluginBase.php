@@ -57,6 +57,7 @@ abstract class CommerceGrouponShippingMapperPluginPluginBase extends PluginBase 
         'items' => $this->getShippingItems($order, $groupon_order),
         'weight' => $this->getDrupalWeight($groupon_order['shipping']['product_weight'], $groupon_order['shipping']['product_weight_unit']),
         'amount' => $this->getPrice((string)$groupon_order['amount']['shipping'], $order->getTotalPrice()->getCurrencyCode()),
+        'state' => 'draft',
       ]);
       return $shipment;
   }
