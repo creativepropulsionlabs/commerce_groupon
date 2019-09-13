@@ -112,12 +112,13 @@ abstract class CommerceGrouponShippingMapperPluginPluginBase extends PluginBase 
   }
 
   public function getShippingItem(OrderItemInterface $order_item, $groupon_line_item, $groupon_order) {
+    // @todo check is packer service is better here.
     $shipping_item = new ShipmentItem([
       'order_item_id' => $order_item->id(),
-      'title' => $order_item->label(),
-      'quantity' => $order_item->getQuantity(),
+      'title' => $groupon_line_item["name"],
+      'quantity' => (string) $groupon_line_item["quantity"],
       'weight' => $this->getDrupalWeight($groupon_line_item['weight'], $groupon_order['shipping']['product_weight_unit']),
-      'declared_value' => $order_item->getUnitPrice(),
+      'declared_value' => new Price((string)$groupon_line_item["groupon_cost"], $order_item->getTotalPrice()->getCurrencyCode()),
     ]);
 
     return $shipping_item;

@@ -5,8 +5,11 @@
  * Primary module hooks for Commerce groupon module.
  */
 
+use Drupal\commerce_groupon\Entity\GrouponPromotion;
+use Drupal\commerce_groupon\Entity\GrouponShippingMethod;
 use Drupal\commerce_order\Adjustment;
 use Drupal\commerce_order\Entity\OrderItem;
+use Drupal\commerce_price\Price;
 use Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException;
 use Drupal\Component\Plugin\Exception\PluginNotFoundException;
 use Drupal\Component\Serialization\Json;
@@ -18,6 +21,7 @@ use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\physical\Weight;
 use Drupal\physical\WeightUnit;
 use Drupal\profile\Entity\Profile;
+use Drupal\user\Entity\User;
 use GuzzleHttp\Exception\BadResponseException;
 use GuzzleHttp\RequestOptions;
 
@@ -261,9 +265,10 @@ function commerce_groupon_create_order(array $groupon_orders) {
         'type' => 'default',
         'title' => $line_item['name'],
         'purchased_entity' => $variation,
-        'quantity' => $line_item['quantity'],
-        'unit_price' => $line_item['groupon_cost'],
+        'quantity' => (string) $line_item['quantity'],
       ]);
+      $unit_price = new Price((string)$line_item['groupon_cost'], $currency_code);
+      $order_item->setUnitPrice($unit_price, TRUE);
       $order_item->setData('ci_lineitemid', (string)$line_item['ci_lineitemid']);
       $order_item->setData('po_number', (string)$groupon_order['parent_orderid']);
       $order_item->setData('groupon_raw', Json::encode($line_item));
@@ -315,12 +320,8 @@ function commerce_groupon_create_order(array $groupon_orders) {
     if ($order->hasField('field_taxes_exclude')) {
       $order->set('field_taxes_exclude', 1);
     }
-    $users = \Drupal::entityTypeManager()->getStorage('user')->loadByProperties([
-      'name' => 'groupon',
-    ]);
-    if (!empty($users)) {
-      $groupon_user = reset($users);
-    }
+
+    $groupon_user = commerce_groupon_get_user_by_groupon_order($groupon_order);
     $order->setCustomer($groupon_user);
     $order->setData('groupon_raw', Json::encode($groupon_order));
     $order->save();
@@ -539,15 +540,11 @@ function commerce_groupon_process_purchased_orders(array $purchased_orders) {
 function commerce_groupon_commerce_shipment_presave(Shipment $shipment) {
   /** @var \Drupal\commerce_order\Entity\OrderInterface $order */
   $order = $shipment->getOrder();
-  $users = \Drupal::entityTypeManager()->getStorage('user')->loadByProperties([
-    'mail' => 'groupon@example.com',
-  ]);
-  if (!empty($users)) {
-    $groupon_user = reset($users);
-  }
-  if ($order->getCustomerId() != $groupon_user->id()) {
+
+  if (strpos($order->getCustomer()->getEmail(), 'groupon') !== 0) {
     return;
   }
+
   $tracking_code = $shipment->getTrackingCode();
   if (empty($tracking_code)) {
     // @todo add custom field as source of tracking_code?
@@ -626,4 +623,100 @@ function commerce_groupon_entity_base_field_info(EntityTypeInterface $entity_typ
       ->setDisplayConfigurable('view', TRUE);
     return $fields;
   }
+}
+
+/**
+ * Implements hook_entity_type_alter().
+ */
+function commerce_groupon_entity_type_alter(&$entity_types) {
+  if (isset($entity_types['commerce_promotion'])) {
+    $entity_types['commerce_promotion']->setClass(GrouponPromotion::class);
+  }
+  if (isset($entity_types['commerce_shipping_method'])) {
+    $entity_types['commerce_shipping_method']->setClass(GrouponShippingMethod::class);
+  }
+}
+
+/**
+ * Implements hook_module_implements_alter().
+ */
+function commerce_groupon_module_implements_alter(&$implementations, $hook) {
+  if ($hook == 'entity_type_alter') {
+
+    // Move my_module_form_alter() to the end of the list.
+    // \Drupal::moduleHandler()->getImplementations()
+    // iterates through $implementations with a foreach loop which PHP iterates
+    // in the order that the items were added, so to move an item to the end of
+    // the array, we remove it and then add it.
+    $group = $implementations['commerce_groupon'];
+    unset($implementations['commerce_groupon']);
+    $implementations['commerce_groupon'] = $group;
+  }
+}
+
+/**
+ * User create helper.
+ *
+ * @param array $groupon_order
+ *   Groupon order.
+ *
+ * @return \Drupal\user\UserInterface|mixed
+ *   Drupal User, Created if not found.
+ */
+function commerce_groupon_get_user_by_groupon_order(array $groupon_order) {
+  $user_mail = 'groupon@example.com';
+  $username = 'groupon';
+
+  if (isset($groupon_order["orderid"])) {
+    $user_mail = 'groupon.' . $groupon_order["orderid"] . '@example.com';
+    $username = 'groupon.' . $groupon_order["orderid"];
+  }
+
+  /** @var \Drupal\user\UserInterface[] $users */
+  try {
+    $users = \Drupal::entityTypeManager()
+      ->getStorage('user')
+      ->loadByProperties([
+        'mail' => $user_mail,
+      ]);
+    if (!empty($users)) {
+      return reset($users);
+    }
+  }
+  catch (InvalidPluginDefinitionException $e) {
+  }
+  catch (PluginNotFoundException $e) {
+  }
+
+  $language = \Drupal::languageManager()->getCurrentLanguage()->getId();
+  $user = User::create();
+
+  //Mandatory settings
+  $user->setPassword('groupon');
+  $user->enforceIsNew();
+  $user->setEmail($user_mail);
+  $user->setUsername($username);
+
+  //Optional settings
+  $user->set("init", $user_mail);
+  $user->set("langcode", $language);
+  $user->set("preferred_langcode", $language);
+  $user->set("preferred_admin_langcode", $language);
+  if (!empty( $groupon_order["customer"]["name"])) {
+    $name_split = explode(" ", $groupon_order["customer"]["name"], 2);
+    $user->set("field_first_name", $name_split[0]);
+    if (isset($name_split[1])) {
+      $user->set("field_last_name", $name_split[1]);
+    }
+  }
+  $user->activate();
+
+  //Save user
+  try {
+    $user->save();
+  }
+  catch (EntityStorageException $e) {
+  }
+
+  return $user;
 }
