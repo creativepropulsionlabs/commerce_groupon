@@ -262,7 +262,7 @@ function commerce_groupon_create_order(array $groupon_orders) {
         'title' => $line_item['name'],
         'purchased_entity' => $variation,
         'quantity' => $line_item['quantity'],
-        'unit_price' => $variation->getPrice(),
+        'unit_price' => $line_item['groupon_cost'],
       ]);
       $order_item->setData('ci_lineitemid', (string)$line_item['ci_lineitemid']);
       $order_item->setData('po_number', (string)$groupon_order['parent_orderid']);
@@ -312,6 +312,9 @@ function commerce_groupon_create_order(array $groupon_orders) {
       'store_id' => $current_store->id(),
       'order_items' => $order_items,
     ]);
+    if ($order->hasField('field_taxes_exclude')) {
+      $order->set('field_taxes_exclude', 1);
+    }
     $users = \Drupal::entityTypeManager()->getStorage('user')->loadByProperties([
       'name' => 'groupon',
     ]);
