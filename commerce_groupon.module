@@ -316,6 +316,7 @@ function commerce_groupon_create_order(array $groupon_orders) {
       'billing_profile' => $billing_profile,
       'store_id' => $current_store->id(),
       'order_items' => $order_items,
+      'field_order_source' => 'groupon',
     ]);
     if ($order->hasField('field_taxes_exclude')) {
       $order->set('field_taxes_exclude', 1);
