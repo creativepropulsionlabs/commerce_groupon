@@ -669,8 +669,8 @@ function commerce_groupon_get_user_by_groupon_order(array $groupon_order) {
   $username = 'groupon';
 
   if (isset($groupon_order["orderid"])) {
-    $user_mail = 'groupon.' . $groupon_order["orderid"] . '@example.com';
-    $username = 'groupon.' . $groupon_order["orderid"];
+    $user_mail = 'groupon+' . $groupon_order["orderid"] . '@diamondcbd.com';
+    $username = 'groupon+' . $groupon_order["orderid"];
   }
 
   /** @var \Drupal\user\UserInterface[] $users */
