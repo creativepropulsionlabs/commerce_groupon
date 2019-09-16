@@ -25,7 +25,7 @@ class Best extends CommerceGrouponShippingMapperPluginPluginBase {
    * {@inheritdoc}
    */
   public function getCarrier(OrderInterface $order) {
-    return 'UPS';
+    return 'USPS';
   }
 
 }
