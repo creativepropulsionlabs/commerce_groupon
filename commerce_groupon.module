@@ -18,6 +18,7 @@ use Drupal\commerce_shipping\Entity\Shipment;
 use Drupal\Core\Entity\EntityStorageException;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\physical\Weight;
 use Drupal\physical\WeightUnit;
 use Drupal\profile\Entity\Profile;
@@ -285,11 +286,12 @@ function commerce_groupon_create_order(array $groupon_orders) {
     // @todo create local order.
     // Create the billing profile.
     /** @var \Drupal\profile\Entity\ProfileInterface $billing_profile */
+    $splitted_name = commerce_groupon_split_cutomer_name($groupon_order['customer']['name']);
     $billing_profile = Profile::create([
       'type' => 'customer',
       'address' => [
-        'given_name' => $groupon_order['customer']['name'],
-        'family_name' => $groupon_order['customer']['name'],
+        'given_name' => $splitted_name['firstname'],
+        'family_name' => $splitted_name['lastname'],
         'address_line1' => $groupon_order['customer']['address1'],
         'address_line2' => $groupon_order['customer']['address2'],
         'administrative_area' => $groupon_order["customer"]["state"],
@@ -703,13 +705,9 @@ function commerce_groupon_get_user_by_groupon_order(array $groupon_order) {
   $user->set("langcode", $language);
   $user->set("preferred_langcode", $language);
   $user->set("preferred_admin_langcode", $language);
-  if (!empty( $groupon_order["customer"]["name"])) {
-    $name_split = explode(" ", $groupon_order["customer"]["name"], 2);
-    $user->set("field_first_name", $name_split[0]);
-    if (isset($name_split[1])) {
-      $user->set("field_last_name", $name_split[1]);
-    }
-  }
+  $splitted_name = commerce_groupon_split_cutomer_name($groupon_order['customer']['name']);
+  $user->set("field_first_name", $splitted_name['firstname']);
+  $user->set("field_last_name", $splitted_name['lastname']);
   $user->activate();
 
   //Save user
@@ -720,4 +718,30 @@ function commerce_groupon_get_user_by_groupon_order(array $groupon_order) {
   }
 
   return $user;
+}
+
+/**
+ * Split single line groupon customer name to first and last name by space.
+ *
+ * @param string $name
+ *   Groupon customer name
+ *
+ * @return array
+ *   Splitted customer name.
+ */
+function commerce_groupon_split_cutomer_name($name = '') {
+  $splitted_name = [
+    'firstname' => '-',
+    'lastname' => '-'
+  ];
+  if (empty($name)) {
+    return $splitted_name;
+  }
+  $name_split = explode(" ", $name, 2);
+  $splitted_name['firstname'] = $name_split[0];
+  if (isset($name_split[1])) {
+    $splitted_name['lastname'] = $name_split[1];
+  }
+
+  return $splitted_name;
 }
