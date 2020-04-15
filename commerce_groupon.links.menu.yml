@@ -4,3 +4,10 @@ commerce_groupon.settings_form:
   description: 'Manage Groupon config.'
   parent: commerce.configuration
   weight: 100
+
+commerce_groupon.get_order_form:
+  title: 'GroupOn Get Order'
+  route_name: commerce_groupon.get_order_form
+  description: 'Force GroupOn Get Order.'
+  parent: commerce.admin_commerce
+  weight: 100

@@ -5,3 +5,11 @@ commerce_groupon.settings_form:
     _form: 'Drupal\commerce_groupon\Form\SettingsForm'
   requirements:
     _permission: 'administer commerce_groupon configuration'
+
+commerce_groupon.get_order_form:
+  path: '/admin/commerce/groupon-get-order'
+  defaults:
+    _title: 'Commerce GroupOn Get Order'
+    _form: 'Drupal\commerce_groupon\Form\GetOrderForm'
+  requirements:
+    _permission: 'administer commerce_groupon configuration'

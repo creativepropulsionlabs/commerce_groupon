@@ -72,15 +72,20 @@ function commerce_groupon_cron() {
   try {
     commerce_groupon_create_order($orders);
   } catch (InvalidPluginDefinitionException $e) {
+    \Drupal::logger('commerce_groupon_Exception')->debug('<pre>@data</pre>', ['@data' => print_r($e->getMessage(),1)]);
   } catch (PluginNotFoundException $e) {
+    \Drupal::logger('commerce_groupon_Exception')->debug('<pre>@data</pre>', ['@data' => print_r($e->getMessage(),1)]);
   } catch (EntityStorageException $e) {
+    \Drupal::logger('commerce_groupon_Exception')->debug('<pre>@data</pre>', ['@data' => print_r($e->getMessage(),1)]);
   }
   $purchased_orders = commerce_groupon_get_purchased_orders();
   if (!is_null($purchased_orders)) {
     try {
       commerce_groupon_process_purchased_orders($purchased_orders);
     } catch (InvalidPluginDefinitionException $e) {
+      \Drupal::logger('commerce_groupon_Exception')->debug('<pre>@data</pre>', ['@data' => print_r($e->getMessage(),1)]);
     } catch (PluginNotFoundException $e) {
+      \Drupal::logger('commerce_groupon_Exception')->debug('<pre>@data</pre>', ['@data' => print_r($e->getMessage(),1)]);
     }
   }
 }
@@ -91,7 +96,7 @@ function commerce_groupon_cron() {
  * @return array
  *   Groupon orders.
  */
-function commerce_groupon_get_orders() {
+function commerce_groupon_get_orders($groupon_order_data = []) {
 //  $json = '{
 //    "meta": {
 //        "no_of_pages": 1,
@@ -159,7 +164,7 @@ function commerce_groupon_get_orders() {
 //  $enc = Json::decode($json);
 //  return $enc['data'];
 
-  $data = (object)commerce_groupon_request('get', ENDPOINT . '/get_orders');
+  $data = (object)commerce_groupon_request('get', ENDPOINT . '/get_orders', [], $groupon_order_data);
   \Drupal::logger('commerce_groupon_get_orders')->debug('<pre>@data</pre>', ['@data' => print_r($data,1)]);
 
   return $data->success == TRUE ? $data->data : [];
@@ -171,7 +176,7 @@ function commerce_groupon_get_orders() {
  * @return array
  *   Groupon purchased orders.
  */
-function commerce_groupon_get_purchased_orders() {
+function commerce_groupon_get_purchased_orders($groupon_order_data = []) {
 //// TODO For debug only
 //  // TODO Attention 'orderid' == 'po_number' - for $order
 //  $json = '{
@@ -203,7 +208,7 @@ function commerce_groupon_get_purchased_orders() {
 
   // TODO end debug - delete it after!
 
-  $data = (object)commerce_groupon_request('get', ENDPOINT . '/purchase_orders');
+  $data = (object)commerce_groupon_request('get', ENDPOINT . '/purchase_orders', [], $groupon_order_data);
   if (isset($data->po_details)) {
     $data_key = 'po_details';
   }
@@ -391,11 +396,11 @@ function commerce_groupon_mark_exported($line_items = []) {
  * @return mixed
  *   Result of call
  */
-function commerce_groupon_request($method, $url, $data = []) {
+function commerce_groupon_request($method, $url, $data = [], $groupon_order_data = []) {
   $callback = "commerce_groupon_request_$method";
   if (is_callable($callback)) {
     try {
-      return $callback($url, $data);
+      return $callback($url, $data, $groupon_order_data);
     }
     catch (Exception $exception) {
       $response = JSON::decode((string)$exception->getResponse()->getBody());
@@ -417,7 +422,7 @@ function commerce_groupon_request($method, $url, $data = []) {
  * @return mixed
  *   Result of call
  */
-function commerce_groupon_request_post($url, $data) {
+function commerce_groupon_request_post($url, $data, $groupon_order_data = []) {
   $config = \Drupal::config('commerce_groupon.settings');
   $post_data = [
       'supplier_id' => $config->get('supplier_id'),
@@ -463,7 +468,7 @@ function commerce_groupon_request_post($url, $data) {
  * @return mixed
  *   Result of call
  */
-function commerce_groupon_request_get($url) {
+function commerce_groupon_request_get($url, $data = [], $groupon_order_data = []) {
   \Drupal::logger('commerce_groupon_request_get')->debug('<pre>@data</pre>', ['@data' => print_r($url,1)]);
 
   $config = \Drupal::config('commerce_groupon.settings');
@@ -474,6 +479,10 @@ function commerce_groupon_request_get($url) {
   if ($config->get('debug', 0) && $url == 'https://scm.commerceinterface.com/api/v4/get_orders') {
     $options['query']['start_datetime'] = $config->get('start_datetime', '09/06/2019 00:00');
     $options['query']['end_datetime'] = $config->get('end_datetime', '09/06/2019 23:59');
+  }
+  elseif (!empty($groupon_order_data)) {
+    $options['query']['start_datetime'] = $groupon_order_data['start_datetime'];
+    $options['query']['end_datetime'] = $groupon_order_data['end_datetime'];
   }
 
   \Drupal::logger('commerce_groupon_request_get')->debug('<pre>@data</pre>', ['@data' => print_r($options,1)]);
