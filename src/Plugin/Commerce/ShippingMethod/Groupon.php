@@ -8,6 +8,7 @@ use Drupal\commerce_shipping\PackageTypeManagerInterface;
 use Drupal\commerce_shipping\Plugin\Commerce\ShippingMethod\ShippingMethodBase;
 use Drupal\commerce_shipping\ShippingRate;
 use Drupal\commerce_shipping\ShippingService;
+use Drupal\state_machine\WorkflowManagerInterface;
 use Drupal\Core\Form\FormStateInterface;
 
 /**
@@ -32,8 +33,8 @@ class Groupon extends ShippingMethodBase {
    * @param \Drupal\commerce_shipping\PackageTypeManagerInterface $package_type_manager
    *   The package type manager.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, PackageTypeManagerInterface $package_type_manager) {
-    parent::__construct($configuration, $plugin_id, $plugin_definition, $package_type_manager);
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, PackageTypeManagerInterface $package_type_manager, WorkflowManagerInterface $workflow_manager) {
+    parent::__construct($configuration, $plugin_id, $plugin_definition, $package_type_manager, $workflow_manager);
 
     $this->services['default'] = new ShippingService('default', 'Groupon (' . $this->configuration['method'] . ')');
   }
